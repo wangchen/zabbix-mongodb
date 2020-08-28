@@ -14,13 +14,17 @@ from sys import exit
 
 import json
 
+
 class MongoDB(object):
     """main script class"""
+
     # pylint: disable=too-many-instance-attributes
     def __init__(self):
         self.mongo_host = "127.0.0.1"
         self.mongo_port = 27017
-        self.mongo_db = ["admin", ]
+        self.mongo_db = [
+            "admin",
+        ]
         self.mongo_user = None
         self.mongo_password = None
         self.__conn = None
@@ -32,19 +36,17 @@ class MongoDB(object):
         if self.__conn is None:
             if self.mongo_user is None:
                 try:
-                    self.__conn = MongoClient('mongodb://%s:%s' %
-                                              (self.mongo_host,
-                                               self.mongo_port))
+                    self.__conn = MongoClient(
+                        'mongodb://%s:%s' % (self.mongo_host, self.mongo_port))
                 except errors.PyMongoError as py_mongo_error:
                     print('Error in MongoDB connection: %s' %
                           str(py_mongo_error))
             else:
                 try:
-                    self.__conn = MongoClient('mongodb://%s:%s@%s:%s' %
-                                              (self.mongo_user,
-                                               self.mongo_password,
-                                               self.mongo_host,
-                                               self.mongo_port))
+                    self.__conn = MongoClient(
+                        'mongodb://%s:%s@%s:%s' %
+                        (self.mongo_user, self.mongo_password, self.mongo_host,
+                         self.mongo_port))
                 except errors.PyMongoError as py_mongo_error:
                     print('Error in MongoDB connection: %s' %
                           str(py_mongo_error))
@@ -127,7 +129,6 @@ class MongoDB(object):
             oplog = int(((str(op_last_st).split('('))[1].split(','))[0])
             self.add_metrics('mongodb.oplog-sync', (current_time - oplog))
 
-
     def get_maintenance(self):
         """get replica set maintenance info"""
         if self.__conn is None:
@@ -153,10 +154,11 @@ class MongoDB(object):
             self.add_metrics('mongodb.priority', priority)
             self.add_metrics('mongodb.hidden', hidden)
         except errors.PyMongoError:
-            print ('Error while fetching replica set configuration.'
-                   'Not a member of replica set?')
+            print('Error while fetching replica set configuration.'
+                  'Not a member of replica set?')
         except UnboundLocalError:
-            print ('Cannot use this mongo host: must be one of ' + ','.join(connstrings))
+            print('Cannot use this mongo host: must be one of ' +
+                  ','.join(connstrings))
             exit(1)
 
     def get_server_status_metrics(self):
@@ -182,7 +184,7 @@ class MongoDB(object):
 
         # memory
         for k in ['resident', 'virtual', 'mapped', 'mappedWithJournal']:
-            self.add_metrics('mongodb.memory.' + k, ss['mem'][k])
+            self.add_metrics('mongodb.memory.' + k, ss['mem'].get(k) or 0)
 
         # connections
         for k, v in ss['connections'].items():
@@ -198,15 +200,15 @@ class MongoDB(object):
 
         #wired tiger
         if ss['storageEngine']['name'] == 'wiredTiger':
-            self.add_metrics('mongodb.used-cache',
-                             ss['wiredTiger']['cache']
-                             ["bytes currently in the cache"])
-            self.add_metrics('mongodb.total-cache',
-                             ss['wiredTiger']['cache']
-                             ["maximum bytes configured"])
-            self.add_metrics('mongodb.dirty-cache',
-                             ss['wiredTiger']['cache']
-                             ["tracked dirty bytes in the cache"])
+            self.add_metrics(
+                'mongodb.used-cache',
+                ss['wiredTiger']['cache']["bytes currently in the cache"])
+            self.add_metrics(
+                'mongodb.total-cache',
+                ss['wiredTiger']['cache']["maximum bytes configured"])
+            self.add_metrics(
+                'mongodb.dirty-cache',
+                ss['wiredTiger']['cache']["tracked dirty bytes in the cache"])
 
         # global lock
         lock_total_time = ss['globalLock']['totalTime']
@@ -227,16 +229,20 @@ class MongoDB(object):
                 db_handler = self.__conn[mongo_db]
                 dbs = db_handler.command('dbstats')
                 for k, v in dbs.items():
-                    if k in ['storageSize', 'ok', 'avgObjSize', 'indexes',
-                             'objects', 'collections', 'fileSize',
-                             'numExtents', 'dataSize', 'indexSize',
-                             'nsSizeMB']:
-                        self.add_metrics('mongodb.stats.' + k +
-                                         '[' + mongo_db + ']', int(v))
+                    if k in [
+                            'storageSize', 'ok', 'avgObjSize', 'indexes',
+                            'objects', 'collections', 'fileSize', 'numExtents',
+                            'dataSize', 'indexSize', 'nsSizeMB'
+                    ]:
+                        self.add_metrics(
+                            'mongodb.stats.' + k + '[' + mongo_db + ']',
+                            int(v))
+
     def close(self):
         """close connection to mongo"""
         if self.__conn is not None:
             self.__conn.close()
+
 
 if __name__ == '__main__':
     mongodb = MongoDB()
